@@ -63,25 +63,14 @@ final class CounterTests: XCTestCase {
         throw SomeError()
       }
     }
-    XCTExpectFailure()
+
     await store.send(.getFactButtonTapped) {
       $0.isLoadingFact = true
     }
+
+      await store.receive(.factResponseError("Failed to fetch fact")) {
+          $0.isLoadingFact = false
+          $0.errorMessage = "Failed to fetch fact"
+      }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

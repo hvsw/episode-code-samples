@@ -1,6 +1,8 @@
 import ComposableArchitecture
 import SwiftUI
 
+extension String: Error { }
+
 struct NumberFactClient {
   var fetch: @Sendable (Int) async throws -> String
 }
@@ -11,7 +13,11 @@ extension NumberFactClient: DependencyKey {
     )
     return String(decoding: data, as: UTF8.self)
   }
+//  static let previewValue: NumberFactClient = Self { number in
+//    throw "Failed to fetch fact"
+//  }
 }
+
 extension DependencyValues {
   var numberFact: NumberFactClient {
     get { self[NumberFactClient.self] }
@@ -25,10 +31,12 @@ struct CounterFeature: Reducer {
     var fact: String?
     var isLoadingFact = false
     var isTimerOn = false
+    var errorMessage: String?
   }
   enum Action: Equatable {
     case decrementButtonTapped
     case factResponse(String)
+    case factResponseError(String)
     case getFactButtonTapped
     case incrementButtonTapped
     case timerTicked
@@ -45,23 +53,39 @@ struct CounterFeature: Reducer {
       case .decrementButtonTapped:
         state.count -= 1
         state.fact = nil
+        state.errorMessage = nil
         return .none
 
       case let .factResponse(fact):
         state.fact = fact
+        state.errorMessage = nil
+        state.isLoadingFact = false
+        return .none
+
+      case let .factResponseError(errorMessage):
+        state.fact = nil
+        state.errorMessage = errorMessage
         state.isLoadingFact = false
         return .none
 
       case .getFactButtonTapped:
         state.fact = nil
+        state.errorMessage = nil
         state.isLoadingFact = true
         return .run { [count = state.count] send in
-          try await send(.factResponse(self.numberFact.fetch(count)))
+          do {
+            await send(
+              .factResponse(try await self.numberFact.fetch(count))
+            )
+          } catch {
+            await send(.factResponseError("Failed to fetch fact"))
+          }
         }
 
       case .incrementButtonTapped:
         state.count += 1
         state.fact = nil
+        state.errorMessage = nil
         return .none
 
       case .timerTicked:
@@ -114,6 +138,9 @@ struct ContentView: View {
           }
           if let fact = viewStore.fact {
             Text(fact)
+          } else if let errorMessage = viewStore.errorMessage {
+            Text(errorMessage)
+              .foregroundStyle(.red)
           }
         }
         Section {
