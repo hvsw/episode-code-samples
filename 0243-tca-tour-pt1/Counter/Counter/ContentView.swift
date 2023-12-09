@@ -35,7 +35,8 @@ struct CounterFeature: Reducer {
   }
   enum Action: Equatable {
     case decrementButtonTapped
-    case factResponse(String?, String?)
+    case factResponse(String)
+    case factResponseError(String)
     case getFactButtonTapped
     case incrementButtonTapped
     case timerTicked
@@ -55,8 +56,14 @@ struct CounterFeature: Reducer {
         state.errorMessage = nil
         return .none
 
-      case let .factResponse(fact, errorMessage):
+      case let .factResponse(fact):
         state.fact = fact
+        state.errorMessage = nil
+        state.isLoadingFact = false
+        return .none
+
+      case let .factResponseError(errorMessage):
+        state.fact = nil
         state.errorMessage = errorMessage
         state.isLoadingFact = false
         return .none
@@ -66,16 +73,13 @@ struct CounterFeature: Reducer {
         state.errorMessage = nil
         state.isLoadingFact = true
         return .run { [count = state.count] send in
-          let fact: String?
-          let errorMessage: String?
           do {
-            fact = try await self.numberFact.fetch(count)
-            errorMessage = nil
+            await send(
+              .factResponse(try await self.numberFact.fetch(count))
+            )
           } catch {
-            fact = nil
-            errorMessage = "Failed to fetch fact"
+            await send(.factResponseError("Failed to fetch fact"))
           }
-          await send(.factResponse(fact, errorMessage))
         }
 
       case .incrementButtonTapped:

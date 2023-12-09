@@ -48,7 +48,7 @@ final class CounterTests: XCTestCase {
     await store.send(.getFactButtonTapped) {
       $0.isLoadingFact = true
     }
-    await store.receive(.factResponse("0 is a great number!", nil)) {
+    await store.receive(.factResponse("0 is a great number!")) {
       $0.fact = "0 is a great number!"
       $0.isLoadingFact = false
     }
@@ -68,7 +68,7 @@ final class CounterTests: XCTestCase {
       $0.isLoadingFact = true
     }
 
-      await store.receive(.factResponse(nil, "Failed to fetch fact")) {
+      await store.receive(.factResponseError("Failed to fetch fact")) {
           $0.isLoadingFact = false
           $0.errorMessage = "Failed to fetch fact"
       }
